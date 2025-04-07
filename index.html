@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>智能纸盒报价系统</title>
+    <script src="https://unpkg.com/@tailwindcss/browser@4"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            max-width: 1200px;
+            margin: 20px auto;
+            padding: 20px;
+        }
+
+        #preview {
+            width: 100%;
+            height: 300px;
+            border: 1px solid #ccc;
+            position: relative;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        th,
+        td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+
+        tr:hover {
+            background-color: #f5f5f5;
+            cursor: pointer;
+        }
+
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            background: #e9f6e9;
+            border-radius: 8px;
+        }
+    </style>
+</head>
+
+<body class="bg-gray-100">
+    <div class="container mx-auto p-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="bg-white p-4 rounded shadow">
+            <h2 class="text-xl font-bold mb-4">参数输入</h2>
+            <div class="mb-4">
+                <label for="length" class="block text-sm font-medium text-gray-700">长(cm):</label>
+                <input type="number" id="length" step="0.1"
+                    class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500 sm:text-sm">
+            </div>
+            <div class="mb-4">
+                <label for="width" class="block text-sm font-medium text-gray-700">宽(cm):</label>
+                <input type="number" id="width" step="0.1"
+                    class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500 sm:text-sm">
+            </div>
+            <div class="mb-4">
+                <label for="height" class="block text-sm font-medium text-gray-700">高(cm):</label>
+                <input type="number" id="height" step="0.1"
+                    class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500 sm:text-sm">
+            </div>
+            <div class="mb-4">
+                <label for="boxType" class="block text-sm font-medium text-gray-700">盒型选择:</label>
+                <select id="boxType"
+                    class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500 sm:text-sm">
+                    <option value="">请点击此处选择盒型</option>
+                    <option value="pingkou">纸箱</option>
+                    <option value="feiji">飞机盒</option>
+                    <option value="koudi">扣底盒</option>
+                    <option value="shuangcha">双插盒</option>
+                </select>
+            </div>
+            <div class="mb-4">
+                <label for="material" class="block text-sm font-medium text-gray-700">材质选择:</label>
+                <select id="material"
+                    class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500 sm:text-sm">
+                    <!-- Options will be added dynamically -->
+                </select>
+            </div>
+            <h3 class="text-lg font-bold mb-2">报价结果</h3>
+            <div class="result" id="result"></div>
+        </div>
+        <div class="bg-white p-4 rounded shadow">
+            <h2 class="text-xl font-bold mb-4">3D预览</h2>
+            <div id="preview"></div>
+        </div>
+    </div>
+
+    <script>
+        // 完整材质数据
+        const materials = [
+            // 3层B瓦
+            { category: "3层（B瓦）", name: "A3A", price: 1.4 },
+            { category: "3层（B瓦）", name: "K3K", price: 1.7 },
+            { category: "3层（B瓦）", name: "K6K", price: 1.8 },
+            { category: "3层（B瓦）", name: "K8K", price: 2 },
+            { category: "3层（B瓦）", name: "S5S", price: 2.7 },
+            { category: "3层（B瓦）", name: "L5L", price: 3.3 },
+            // 5层BC瓦
+            { category: "5层（BC瓦）", name: "A=A", price: 2 },
+            { category: "5层（BC瓦）", name: "A636A", price: 2.2 },
+            { category: "5层（BC瓦）", name: "K=K", price: 2.3 },
+            { category: "5层（BC瓦）", name: "K636K", price: 2.4 },
+            { category: "5层（BC瓦）", name: "K838K", price: 2.7 },
+            { category: "5层（BC瓦）", name: "K939K", price: 2.9 },
+            { category: "5层（BC瓦）", name: "S=S", price: 3.3 },
+            { category: "5层（BC瓦）", name: "L=L", price: 4 },
+            // 3层E瓦
+            { category: "3层（E瓦）", name: "A9A", price: 1.6 },
+            { category: "3层（E瓦）", name: "K9K", price: 1.8 },
+            { category: "3层（E瓦）", name: "K9K+", price: 1.9 },
+            { category: "3层（E瓦）", name: "S5S", price: 2.9 },
+            { category: "3层（E瓦）", name: "L5L", price: 3.5 }
+        ];
+
+        // 盒型配置
+        const boxTypes = {
+            pingkou: { name: '平口纸箱', hasMold: false },
+            feiji: { name: '飞机盒', hasMold: true },
+            koudi: { name: '扣底盒', hasMold: true },
+            shuangcha: { name: '双插盒', hasMold: true }
+        };
+
+        // 3D场景设置
+        let scene, camera, renderer, box, controls;
+        function init3D() {
+            scene = new THREE.Scene();
+            const preview = document.getElementById('preview');
+            const width = preview.offsetWidth;
+            const height = preview.offsetHeight;
+            camera = new THREE.PerspectiveCamera(75, width / height, 0.1, 1000);
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(width, height);
+            preview.appendChild(renderer.domElement);
+
+            // 初始视角
+            camera.position.set(0, 2, 2);
+            camera.lookAt(0, 0, 0);
+
+            // 灯光
+            const light = new THREE.DirectionalLight(0xffffff, 1);
+            light.position.set(5, 5, 5);
+            scene.add(light);
+            scene.add(new THREE.AmbientLight(0x404040));
+
+            // 控制器
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+
+            animate();
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+            renderer.render(scene, camera);
+        }
+
+        // 更新3D模型（带边线）
+        function updateModel(l, w, h) {
+            // 清除旧模型
+            if (box) {
+                scene.remove(box.mesh);
+                scene.remove(box.wireframe);
+            }
+
+            // 创建新模型
+            const geometry = new THREE.BoxGeometry(l / 10, w / 10, h / 10);
+
+            // 主体材质
+            const material = new THREE.MeshPhongMaterial({
+                color: 0xffff00,
+                shininess: 100
+            });
+
+            // 边线材质
+            const edges = new THREE.EdgesGeometry(geometry);
+            const lineMaterial = new THREE.LineBasicMaterial({
+                color: 0x000000,
+                linewidth: 2
+            });
+
+            // 创建组合对象
+            box = {
+                mesh: new THREE.Mesh(geometry, material),
+                wireframe: new THREE.LineSegments(edges, lineMaterial)
+            };
+
+            // 调整初始角度
+            box.mesh.rotation.x = Math.PI / 2;
+            box.mesh.rotation.z = Math.PI / 4;
+            box.wireframe.rotation.x = Math.PI / 2;
+            box.wireframe.rotation.z = Math.PI / 4;
+
+            // 自动缩放模型
+            const maxSize = Math.max(l, w, h);
+            const scaleFactor = 1 / (maxSize / 10);
+            box.mesh.scale.set(scaleFactor, scaleFactor, scaleFactor);
+            box.wireframe.scale.set(scaleFactor, scaleFactor, scaleFactor);
+
+            scene.add(box.mesh);
+            scene.add(box.wireframe);
+        }
+
+        // 创建材质下拉框
+        function createMaterialDropdown() {
+            const select = document.getElementById('material');
+            materials.forEach(m => {
+                const option = document.createElement('option');
+                option.value = m.price;
+                option.textContent = `${m.category} - ${m.name}`;
+                select.appendChild(option);
+            });
+            select.addEventListener('change', calculate);
+        }
+
+        // 完整计算公式
+        function calculate() {
+            const l = parseFloat(document.getElementById('length').value) || 0;
+            const w = parseFloat(document.getElementById('width').value) || 0;
+            const h = parseFloat(document.getElementById('height').value) || 0;
+            const selectedPrice = parseFloat(document.getElementById('material').value);
+            const selectedBoxType = document.getElementById('boxType').value;
+
+            updateModel(l, w, h);
+
+            let tableRows = '';
+            const calculateAll = selectedBoxType === 'all';
+            
+            // 平口纸箱
+            if (calculateAll || selectedBoxType === 'pingkou') {
+                const pingkou = ((l + w + 5) * (w + h + 2.5) * 2 * selectedPrice * 0.155) / 1000;
+                tableRows += `<tr><td>平口纸箱</td><td>￥${pingkou.toFixed(2)}</td><td>-</td></tr>`;
+            }
+
+            // 飞机盒
+            if (calculateAll || selectedBoxType === 'feiji') {
+                const feiji = ((3 * h + 2 * w) / 2.54 + 2) * ((4 * h + l) / 2.54 + 2) * selectedPrice / 1000 + 0.05;
+                const feiji_mold = ((3 * h + 2 * w) / 2.54 + 2) * ((4 * h + l) / 2.54 + 2) * 0.2;
+                tableRows += `<tr><td>飞机盒</td><td>￥${feiji.toFixed(2)}</td><td>￥${feiji_mold.toFixed(2)}</td></tr>`;
+            }
+
+            // 扣底盒
+            if (calculateAll || selectedBoxType === 'koudi') {
+                const koudi = ((l + w) / 2.54 * 2 + 3.5) * ((1.5 * w / 2.54) + h / 2.54 + 4) * selectedPrice / 1000 + 0.1;
+                const koudi_mold = ((l + w) / 2.54 * 2 + 3.5) * ((1.5 * w / 2.54) + h / 2.54 + 4) * 0.15;
+                tableRows += `<tr><td>扣底盒</td><td>￥${koudi.toFixed(2)}</td><td>￥${koudi_mold.toFixed(2)}</td></tr>`;
+            }
+
+            // 双插盒
+            if (calculateAll || selectedBoxType === 'shuangcha') {
+                const shuangcha = (2 * w / 2.54 + h / 2.54 + 4) * ((l + w) / 2.54 * 2 + 3.5) * selectedPrice / 1000 + 0.1;
+                const shuangcha_mold = (2 * w / 2.54 + h / 2.54 + 4) * ((l + w) / 2.54 * 2 + 3.5) * 0.2;
+                tableRows += `<tr><td>双插盒</td><td>￥${shuangcha.toFixed(2)}</td><td>￥${shuangcha_mold.toFixed(2)}</td></tr>`;
+            }
+
+            let result = `
+                <table>
+                    <tr><th>盒型</th><th>报价</th><th>刀模费</th></tr>
+                    ${tableRows}
+                </table>
+            `;
+
+            document.getElementById('result').innerHTML = result;
+        }
+
+        // 初始化
+        init3D();
+        createMaterialDropdown();
+        document.querySelectorAll('input, select').forEach(el => el.addEventListener('input', calculate));
+    </script>
+</body>
+
+</html>
